@@ -1,0 +1,108 @@
+### Test Health Endpoint
+GET http://localhost:8000/health
+
+###
+
+### 1. Create a Payment
+POST http://localhost:8000/payments/create
+Content-Type: application/json
+
+{
+  "subscription_id": 1,
+  "amount": 100,
+  "gateway_id": "test_gateway"
+}
+
+###
+
+### 2. Approve the Payment (Replace {payment_id} with actual ID from step 1)
+POST http://localhost:8000/payments/1/approve
+Content-Type: application/json
+
+{
+  "idempotency_key": "unique-key-123"
+}
+
+###
+
+### 3. Refund the Payment (Replace {payment_id} with actual ID from step 1)
+POST http://localhost:8000/payments/1/refund
+Content-Type: application/json
+
+{
+  "idempotency_key": "refund-key-456"
+}
+
+###
+
+### 4. Test Idempotency - Try approving same payment again
+POST http://localhost:8000/payments/1/approve
+Content-Type: application/json
+
+{
+  "idempotency_key": "unique-key-123"
+}
+
+###
+
+### 5. Create another payment for race condition testing
+POST http://localhost:8000/payments/create
+Content-Type: application/json
+
+{
+  "subscription_id": 1,
+  "amount": 50.0,
+  "gateway_id": "race_test_gw"
+}
+
+###
+
+### 6. Test Notifications - Create a notification
+POST http://localhost:8000/notifications/create
+Content-Type: application/json
+
+{
+  "family_id": 1,
+  "type": "payment_approved",
+  "message": "Payment has been approved",
+  "data": {"payment_id": 1, "amount": 100}
+}
+
+###
+
+### 7. Get all notifications for a family
+GET http://localhost:8000/notifications/family/1
+
+###
+
+### 8. Create Payment with Different Gateway
+POST http://localhost:8000/payments/create
+Content-Type: application/json
+
+{
+  "subscription_id": 1,
+  "amount": 75.5,
+  "gateway_id": "stripe_test"
+}
+
+###
+
+### 9. Test Invalid Payment Approval (non-existent payment)
+POST http://localhost:8000/payments/99999/approve
+Content-Type: application/json
+
+{
+  "idempotency_key": "test-invalid-payment"
+}
+
+###
+
+### 10. Test Empty/Invalid Data
+POST http://localhost:8000/payments/create
+Content-Type: application/json
+
+{
+  "subscription_id": 999,
+  "amount": -10,
+  "gateway_id": ""
+}
