@@ -8,6 +8,7 @@ from app.services.db import get_db
 from sqlalchemy.orm import Session
 from app.models.parents import Parent
 from app.models.builders import Builder
+from app.models.children import Child
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -76,8 +77,16 @@ async def signup(request: SignupRequest, db: Session = Depends(get_db)):
                 db.commit()
         elif request.role == 'builder':
             if not db.query(Builder).filter(Builder.email == request.email).first():
-                builder = Builder(email=request.email, name=request.name)
+                builder = Builder(email=request.email, name=request.name, verification_status='verified', rating_avg=0.0)
                 db.add(builder)
+                db.commit()
+        elif request.role == 'student':
+            # Create a Child row so /dashboards/child?email= can resolve this student.
+            # family_id is left None here — a parent must link the student to their
+            # family via the invite/join flow (product TODO: not yet implemented).
+            if not db.query(Child).filter(Child.email == request.email).first():
+                child = Child(email=request.email, name=request.name, family_id=None)
+                db.add(child)
                 db.commit()
         # 2. Set up role-specific data
         # 3. Generate JWT token

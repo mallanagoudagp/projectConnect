@@ -18,8 +18,7 @@ export default function SimpleBuilderLogin() {
       const supabase = getSupabaseBrowser()
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
-        password,
-        role: 'builder'
+        password
       })
       
       if (error) {

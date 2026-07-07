@@ -1,6 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .services.socketio_server import init_socket
+import os
+
+# Load environment variables from local env files
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load from backend/.env if exists
+    # Load from parent directory .env.local (shared with frontend)
+    parent_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env.local"))
+    if os.path.exists(parent_env):
+        load_dotenv(parent_env)
+except ImportError:
+    pass
 
 app = FastAPI()
 
@@ -33,6 +45,7 @@ from .routes.escrow import router as escrow_router
 from .routes.files import router as files_router
 from .routes.reviews import router as reviews_router
 from .routes.analytics import router as analytics_router
+from .routes.project_requests import router as project_requests_router
 
 app.include_router(auth_router)
 app.include_router(families_router)
@@ -48,6 +61,8 @@ app.include_router(escrow_router)
 app.include_router(files_router)
 app.include_router(reviews_router)
 app.include_router(analytics_router)
+app.include_router(project_requests_router)
+
 
 init_socket(app)
 

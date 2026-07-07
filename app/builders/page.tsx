@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Image from "next/image"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { apiFetch } from "@/lib/api-client"
 
 // Demo data removed, now fetching from API
 
@@ -25,8 +26,8 @@ export default function BuildersDirectory() {
   const [builders, setBuilders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useMemo(() => {
-    fetch('http://localhost:8000/builders')
+  useEffect(() => {
+    apiFetch("/builders")
       .then(res => res.json())
       .then(data => {
         setBuilders(data)

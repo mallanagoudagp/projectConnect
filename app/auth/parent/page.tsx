@@ -28,8 +28,7 @@ export default function ParentLoginPage() {
       // Add role to login credentials for mock client
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
-        password,
-        role: 'parent'
+        password
       })
       
       if (error) throw error
@@ -44,6 +43,7 @@ export default function ParentLoginPage() {
       // Use router.push for better performance
       router.push("/parent/dashboard")
     } catch (e: any) {
+      console.error("Supabase sign-in error details:", e);
       toast({ title: "Sign-in failed", description: e.message, variant: "destructive" })
     } finally {
       setLoading(false)

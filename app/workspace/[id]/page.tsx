@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
-import { RoleGuard } from "@/components/role-guard"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,41 +10,64 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { getSupabaseBrowser } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+import { apiFetch } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 
 export default function WorkspacePage() {
   const { id } = useParams()
+  const { toast } = useToast()
+  const { role } = useAuth()
+
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  
-  // Builder proposing session state
+
+  // Builder: proposing session state
   const [topic, setTopic] = useState("")
   const [datetime, setDatetime] = useState("")
   const [link, setLink] = useState("")
-  
-  // Builder progress state
+
+  // Builder: progress state
   const [newProgress, setNewProgress] = useState(0)
-  
+
   // File upload state
   const [isUploading, setIsUploading] = useState(false)
-  
-  // Review state
+
+  // Review state (parent, project complete)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState("")
   const [reviewSubmitted, setReviewSubmitted] = useState(false)
 
+  // Refund state (parent, project in-progress)
+  const [isRefunding, setIsRefunding] = useState(false)
+
+  // Release state (parent, project complete)
+  const [isReleasing, setIsReleasing] = useState(false)
+
+  const handleReleaseEscrow = async () => {
+    if (!confirm("Are you sure you want to approve this project and release the escrow funds to the builder? This cannot be undone.")) return
+    setIsReleasing(true)
+    try {
+      const res = await apiFetch(`/escrow/${id}/release`, {
+        method: "POST"
+      })
+      if (res.ok) {
+        toast({ title: "Funds Released", description: "Escrow funds have been successfully transferred to the builder!" })
+        fetchWorkspace()
+      } else {
+        const err = await res.json()
+        toast({ title: "Release Failed", description: err.detail || "Error", variant: "destructive" })
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" })
+    } finally {
+      setIsReleasing(false)
+    }
+  }
+
   const fetchWorkspace = async () => {
     try {
-      const supabase = getSupabaseBrowser()
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      // We will parse role from localstorage or token if possible, but for demo we can check current URL context or just show all UI blocks. 
-      // In a real app we'd decode the JWT. Let's rely on a mock state for demo.
-      const storedRole = typeof window !== 'undefined' ? localStorage.getItem('demo_role') || 'parent' : 'parent'
-      setUserRole(storedRole)
-      
-      const res = await fetch(`http://localhost:8000/workspaces/${id}`)
+      const res = await apiFetch(`/workspaces/${id}`)
       if (res.ok) {
         const json = await res.json()
         setData(json)
@@ -64,7 +86,7 @@ export default function WorkspacePage() {
 
   const handleProposeSession = async (e: React.FormEvent) => {
     e.preventDefault()
-    const res = await fetch(`http://localhost:8000/workspaces/${id}/sessions`, {
+    const res = await apiFetch(`/workspaces/${id}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -75,51 +97,39 @@ export default function WorkspacePage() {
       })
     })
     if (res.ok) {
-      alert("Session proposed!")
+      toast({ title: "Session proposed!" })
       fetchWorkspace()
+    } else {
+      toast({ title: "Failed to propose session", variant: "destructive" })
     }
   }
 
   const handleApproveSession = async (sessionId: number) => {
-    const res = await fetch(`http://localhost:8000/workspaces/${id}/sessions/${sessionId}/approve`, {
+    const res = await apiFetch(`/workspaces/${id}/sessions/${sessionId}/approve`, {
       method: "PUT"
     })
     if (res.ok) {
-      alert("Session scheduled!")
+      toast({ title: "Session scheduled!" })
       fetchWorkspace()
+    } else {
+      toast({ title: "Failed to approve session", variant: "destructive" })
     }
   }
 
   const handleUpdateProgress = async () => {
     const pVal = parseInt(newProgress.toString(), 10)
-    
-    // Update progress
-    const res = await fetch(`http://localhost:8000/workspaces/${id}/progress`, {
+
+    const res = await apiFetch(`/workspaces/${id}/progress`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ progress: pVal })
     })
-    
+
     if (res.ok) {
       toast({ title: "Progress updated!" })
-      
-      // Automatically release Escrow if 100%
-      if (pVal === 100 && data?.escrow?.status === "held") {
-        try {
-          const escRes = await fetch(`http://localhost:8000/escrow/${id}/release`, {
-            method: "POST"
-          })
-          if (escRes.ok) {
-            toast({ title: "Project Complete", description: "Escrow funds have been successfully released!" })
-          } else {
-            toast({ title: "Escrow Error", description: "Failed to release funds.", variant: "destructive" })
-          }
-        } catch (e) {
-          console.error(e)
-        }
-      }
-      
       fetchWorkspace()
+    } else {
+      toast({ title: "Failed to update progress", variant: "destructive" })
     }
   }
 
@@ -144,13 +154,13 @@ export default function WorkspacePage() {
       const mockUrl = uploadData?.media?.url || uploadData?.media?.thumbnailUrl || "https://example.com/mock-file.png"
 
       // 3. Save to FastAPI backend
-      const res = await fetch(`http://localhost:8000/workspaces/${id}/files`, {
+      const res = await apiFetch(`/workspaces/${id}/files`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           file_name: file.name,
           file_url: mockUrl,
-          uploader_role: userRole
+          uploader_role: role
         })
       })
 
@@ -169,7 +179,7 @@ export default function WorkspacePage() {
 
   const handleSubmitReview = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/reviews`, {
+      const res = await apiFetch(`/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -194,9 +204,42 @@ export default function WorkspacePage() {
     }
   }
 
+  const handleRefund = async () => {
+    if (!confirm("Are you sure you want to cancel this project and request a refund? This cannot be undone.")) return
+    setIsRefunding(true)
+    try {
+      const res = await apiFetch(`/escrow/${id}/refund`, {
+        method: "POST"
+      })
+      const result = await res.json()
+
+      if (res.status === 200 && result.status === "refunded") {
+        // Path A: progress was 0, immediate refund
+        toast({
+          title: "Refund Successful",
+          description: `$${result.amount} has been refunded. Refund ID: ${result.refund_id}`
+        })
+        fetchWorkspace()
+      } else if (res.status === 202 && result.status === "refund_requested") {
+        // Path B: work had started, queued for admin review
+        toast({
+          title: "Refund Request Submitted",
+          description: result.message
+        })
+        fetchWorkspace()
+      } else {
+        toast({ title: "Refund Failed", description: result.detail || "Unexpected error", variant: "destructive" })
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" })
+    } finally {
+      setIsRefunding(false)
+    }
+  }
+
   if (loading) {
     return (
-      <AppShell role="parent">
+      <AppShell role={role ?? "parent"}>
         <div className="p-8">Loading workspace...</div>
       </AppShell>
     )
@@ -204,27 +247,15 @@ export default function WorkspacePage() {
 
   if (!data) {
     return (
-      <AppShell role="parent">
+      <AppShell role={role ?? "parent"}>
         <div className="p-8">Workspace not found.</div>
       </AppShell>
     )
   }
 
-  // To let reviewers test both modes easily on local, we provide role switch buttons purely for the demo:
-  const switchRole = (role: string) => {
-    localStorage.setItem('demo_role', role)
-    setUserRole(role)
-  }
-
   return (
-    <AppShell role={userRole === "builder" ? "builder" : userRole === "student" ? "student" : "parent"}>
+    <AppShell role={role === "builder" ? "builder" : role === "student" ? "student" : "parent"}>
       <main className="min-h-screen px-4 py-8 max-w-5xl mx-auto">
-        
-        <div className="mb-6 flex gap-2 justify-end">
-           <Badge variant="outline" className="cursor-pointer" onClick={() => switchRole('parent')}>View as Parent</Badge>
-           <Badge variant="outline" className="cursor-pointer" onClick={() => switchRole('builder')}>View as Builder</Badge>
-           <Badge variant="outline" className="cursor-pointer" onClick={() => switchRole('student')}>View as Student</Badge>
-        </div>
 
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
           <div>
@@ -233,14 +264,22 @@ export default function WorkspacePage() {
               Student: {data.student.name} | Builder: {data.builder.name}
             </p>
           </div>
-          
+
           {data.escrow.status !== "none" && (
             <div className="mt-4 md:mt-0 bg-muted/50 px-4 py-2 rounded-md border flex flex-col items-end">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Payment Escrow</span>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-lg">${data.escrow.amount}</span>
-                <Badge variant={data.escrow.status === 'held' ? 'secondary' : 'default'}>
-                  {data.escrow.status === 'held' ? 'FUNDS HELD' : 'RELEASED'}
+                <Badge variant={
+                  data.escrow.status === "held" ? "secondary"
+                  : data.escrow.status === "refunded" ? "destructive"
+                  : data.escrow.status === "refund_requested" ? "destructive"
+                  : "default"
+                }>
+                  {data.escrow.status === "held" ? "FUNDS HELD"
+                  : data.escrow.status === "refunded" ? "REFUNDED"
+                  : data.escrow.status === "refund_requested" ? "REFUND PENDING ADMIN"
+                  : "RELEASED"}
                 </Badge>
               </div>
             </div>
@@ -259,8 +298,8 @@ export default function WorkspacePage() {
                   <Badge>{data.status}</Badge>
                 </div>
                 <Progress value={data.progress} className="mb-6" />
-                
-                {userRole === "builder" && (
+
+                {role === "builder" && (
                   <div className="border-t pt-4">
                     <Label className="mb-2 block">Update Progress</Label>
                     <div className="flex gap-2">
@@ -272,7 +311,7 @@ export default function WorkspacePage() {
               </CardContent>
             </Card>
 
-            {userRole === "builder" && (
+            {role === "builder" && (
               <Card>
                 <CardHeader>
                   <CardTitle>Propose a Session</CardTitle>
@@ -285,7 +324,7 @@ export default function WorkspacePage() {
                       <Input value={topic} onChange={e => setTopic(e.target.value)} required placeholder="e.g. Code Review" />
                     </div>
                     <div>
-                      <Label>Date & Time</Label>
+                      <Label>Date &amp; Time</Label>
                       <Input type="datetime-local" value={datetime} onChange={e => setDatetime(e.target.value)} required />
                     </div>
                     <div>
@@ -319,7 +358,7 @@ export default function WorkspacePage() {
                         {s.status.toUpperCase()}
                       </Badge>
                     </div>
-                    
+
                     {s.meeting_link && s.status === "scheduled" && (
                       <div className="mt-4">
                         <Button variant="outline" asChild size="sm">
@@ -328,7 +367,7 @@ export default function WorkspacePage() {
                       </div>
                     )}
 
-                    {(userRole === "parent" || userRole === "student") && s.status === "proposed" && (
+                    {(role === "parent" || role === "student") && s.status === "proposed" && (
                       <div className="mt-4 border-t pt-3">
                         <p className="text-sm mb-2 text-muted-foreground">Builder proposed this session. Please approve.</p>
                         <Button onClick={() => handleApproveSession(s.id)} size="sm">Approve Session</Button>
@@ -341,7 +380,7 @@ export default function WorkspacePage() {
             </Card>
           </div>
         </div>
-        
+
         <div className="mt-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -355,11 +394,11 @@ export default function WorkspacePage() {
                     {isUploading ? "Uploading..." : "Upload File"}
                   </div>
                 </Label>
-                <Input 
-                  id="file-upload" 
-                  type="file" 
-                  className="hidden" 
-                  onChange={handleFileUpload} 
+                <Input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
                   disabled={isUploading}
                 />
               </div>
@@ -370,7 +409,7 @@ export default function WorkspacePage() {
                   {data.files.map((f: any) => (
                     <div key={f.id} className="border rounded-md p-2 flex flex-col items-center justify-center text-center gap-2 hover:bg-muted/50 transition-colors">
                       <div className="h-20 w-20 bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                        {f.file_url.includes('image') || f.file_url.includes('.png') || f.file_url.includes('.jpg') ? (
+                        {f.file_url.includes("image") || f.file_url.includes(".png") || f.file_url.includes(".jpg") ? (
                           <img src={f.file_url} alt={f.file_name} className="object-cover w-full h-full" />
                         ) : (
                           <span className="text-2xl">📄</span>
@@ -387,9 +426,71 @@ export default function WorkspacePage() {
             </CardContent>
           </Card>
         </div>
-        
-        {/* Review Section for Parents when completed */}
-        {userRole === "parent" && data.progress === 100 && (
+
+        {/* Refund / dispute section — parent only, escrow held or refund_requested, project not yet complete */}
+        {role === "parent" && data.progress < 100 && data.escrow?.status === "refund_requested" && (
+          <div className="mt-6">
+            <Card className="border-yellow-500/40">
+              <CardHeader>
+                <CardTitle className="text-yellow-600">Refund Under Admin Review</CardTitle>
+                <CardDescription>
+                  Your refund request has been submitted. An admin will review the dispute and
+                  contact you within 1–2 business days. No funds have moved yet.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
+
+        {role === "parent" && data.escrow?.status === "held" && data.progress < 100 && (
+          <div className="mt-6">
+            <Card className="border-destructive/40">
+              <CardHeader>
+                <CardTitle className="text-destructive">Cancel &amp; Request Refund</CardTitle>
+                <CardDescription>
+                  If you are unsatisfied with the progress, you can cancel this project and have the
+                  escrowed funds returned to you. This action cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="destructive"
+                  onClick={handleRefund}
+                  disabled={isRefunding}
+                >
+                  {isRefunding ? "Processing Refund..." : `Refund $${data.escrow.amount} to Me`}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Release Escrow section — parent only, project 100% complete, funds still held */}
+        {role === "parent" && data.progress === 100 && data.escrow?.status === "held" && (
+          <div className="mt-6">
+            <Card className="border-primary/45">
+              <CardHeader>
+                <CardTitle>Release Escrow Funds</CardTitle>
+                <CardDescription>
+                  The builder has completed the project (100% progress). Please review the work
+                  and authorize the release of the escrowed funds. Once released, the funds will
+                  be transferred to the builder's account. This action cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={handleReleaseEscrow}
+                  disabled={isReleasing}
+                >
+                  {isReleasing ? "Releasing Funds..." : "Approve &amp; Release Funds"}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Review section — parent only, project 100% complete */}
+        {role === "parent" && data.progress === 100 && (
           <div className="mt-6">
             <Card>
               <CardHeader>
@@ -416,7 +517,7 @@ export default function WorkspacePage() {
             </Card>
           </div>
         )}
-        
+
       </main>
     </AppShell>
   )

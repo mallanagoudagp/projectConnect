@@ -69,3 +69,9 @@ class MockPaymentGateway:
         """Simulates transferring funds to a Builder's connected account."""
         print(f"[MOCK STRIPE] Transferred ${amount} to builder account {builder_account_id}")
         return {"status": "success", "transfer_id": "tr_mock_98765"}
+
+    @staticmethod
+    def refund_to_parent(amount: float, source_token: str = "tok_mock_refund") -> dict:
+        """Simulates refunding held escrow funds back to the parent's original payment method."""
+        print(f"[MOCK STRIPE] Refunded ${amount} back to parent via token {source_token}")
+        return {"status": "success", "refund_id": "re_mock_11111"}

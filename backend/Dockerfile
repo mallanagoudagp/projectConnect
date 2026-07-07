@@ -6,7 +6,7 @@ WORKDIR /app
 COPY . /app
 
 RUN pip install --upgrade pip && \
-    pip install fastapi uvicorn sqlalchemy alembic fastapi-socketio pytest httpx psycopg2-binary
+    pip install -r requirements.txt
 
 ENV PYTHONPATH=/app
     

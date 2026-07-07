@@ -1,19 +1,40 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { RoleGuard } from "@/components/role-guard"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import { apiFetch } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 
 export default function StudentDashboard() {
+  const router = useRouter()
+  const { user, role, loading: authLoading } = useAuth()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
+  // Auth guard: redirect unauthenticated users to login;
+  // redirect wrong-role users to their correct dashboard
+  // (same mapping as app/api/auth/redirect/route.ts)
   useEffect(() => {
-    // For demo/testing, fetch the seeded child (id=1)
-    fetch('http://localhost:8000/dashboards/child?child_id=1')
+    if (authLoading) return
+    if (!user) {
+      router.replace("/auth/login")
+    } else if (role !== "student") {
+      const dest =
+        role === "builder" ? "/builder/dashboard" : "/parent/dashboard"
+      router.replace(dest)
+    }
+  }, [authLoading, user, role, router])
+
+  // Fetch dashboard once we have the logged-in student's email
+  useEffect(() => {
+    if (authLoading || !user?.email) return
+
+    apiFetch(`/dashboards/child?email=${encodeURIComponent(user.email)}`)
       .then(res => res.json())
       .then(data => {
         setData(data)
@@ -23,9 +44,9 @@ export default function StudentDashboard() {
         console.error(err)
         setLoading(false)
       })
-  }, [])
+  }, [authLoading, user])
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <RoleGuard allowedRoles={["student"]}>
         <AppShell role="student">

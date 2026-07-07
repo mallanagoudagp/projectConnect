@@ -1,5 +1,34 @@
 // API configuration for connecting to your FastAPI backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/backend';
+
+/**
+ * apiFetch — drop-in replacement for fetch() for all FastAPI backend calls.
+ *
+ * Automatically injects the Supabase access token as an Authorization: Bearer
+ * header so the backend's auth_dependency.get_current_user() can verify the
+ * caller. Use this instead of bare fetch() for every call to API_BASE_URL.
+ *
+ * Usage:
+ *   const data = await apiFetch('/dashboards/parent?email=...')
+ *   const result = await apiFetch('/escrow/5/refund', { method: 'POST' })
+ */
+export async function apiFetch(
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  // Dynamically import to avoid bundling Supabase in server contexts
+  const { getSupabaseBrowser } = await import('@/lib/supabase/client')
+  const supabase = getSupabaseBrowser()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const headers = new Headers(options.headers)
+  headers.set('Content-Type', headers.get('Content-Type') ?? 'application/json')
+  if (session?.access_token) {
+    headers.set('Authorization', `Bearer ${session.access_token}`)
+  }
+
+  return fetch(`${API_BASE_URL}${path}`, { ...options, headers })
+}
 
 // Generic API client with error handling
 class ApiClient {

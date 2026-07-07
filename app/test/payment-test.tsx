@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { API_BASE_URL } from "@/lib/backend-url"
 
 interface Payment {
   id: number;
@@ -15,7 +16,7 @@ export function PaymentTestPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const API_BASE = "http://localhost:8000";
+  const API_BASE = API_BASE_URL;
 
   const createPayment = async () => {
     setLoading(true);

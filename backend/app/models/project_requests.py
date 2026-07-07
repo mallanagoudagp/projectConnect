@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.services.db import Base
@@ -7,7 +7,10 @@ class ProjectRequest(Base):
     __tablename__ = 'project_requests'
     id = Column(Integer, primary_key=True, index=True)
     child_id = Column(Integer, ForeignKey('children.id'))
-    service_id = Column(Integer, ForeignKey('services.id'))
+    service_id = Column(Integer, ForeignKey('services.id'), nullable=True)
+    title = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    budget = Column(Float, nullable=True)
     status = Column(String, default='Pending') # Pending, Approved, In Progress, Completed
     progress = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)

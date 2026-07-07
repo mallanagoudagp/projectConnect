@@ -22,8 +22,7 @@ export default function SimpleStudentLogin() {
       const supabase = getSupabaseBrowser()
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
-        password,
-        role: 'student'
+        password
       })
       
       if (error) {

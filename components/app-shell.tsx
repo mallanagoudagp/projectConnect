@@ -11,8 +11,16 @@ import { cn } from "@/lib/utils"
 import { Menu } from "lucide-react"
 import { getSupabaseBrowser } from "@/lib/supabase/client"
 
-const baseNav = [
+const parentNav = [
   { href: "/parent/dashboard", label: "Dashboard" },
+  { href: "/builders", label: "Builders" },
+  { href: "/notifications", label: "Notifications" },
+  { href: "/reviews", label: "Reviews" },
+  { href: "/settings", label: "Settings" },
+]
+
+const studentNav = [
+  { href: "/student/dashboard", label: "Dashboard" },
   { href: "/builders", label: "Builders" },
   { href: "/student/requests/new", label: "Request" },
   { href: "/notifications", label: "Notifications" },
@@ -20,11 +28,17 @@ const baseNav = [
   { href: "/settings", label: "Settings" },
 ]
 
+const builderNav = [
+  { href: "/builder/dashboard", label: "Dashboard" },
+  { href: "/builder/uploads", label: "Uploads" },
+  { href: "/reviews", label: "Reviews" },
+  { href: "/settings", label: "Settings" },
+]
+
 const nav = (role: "parent" | "student" | "builder" | undefined) => {
-  if (role === "builder") {
-    return [...baseNav, { href: "/builder/uploads", label: "Uploads" }]
-  }
-  return baseNav
+  if (role === "builder") return builderNav
+  if (role === "student") return studentNav
+  return parentNav
 }
 
 export function AppShell({

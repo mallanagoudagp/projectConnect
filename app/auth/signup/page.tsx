@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RoleSelect } from "@/components/role-select"
+import { apiFetch } from "@/lib/api-client"
 import { getSupabaseBrowser } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
@@ -33,6 +34,23 @@ export default function SignupPage() {
         },
       })
       if (error) throw error
+
+      // Sync the user to the local FastAPI Postgres database (creating Parent, Builder, or Child row)
+      if (data?.user) {
+        try {
+          await apiFetch("/auth/signup", {
+            method: "POST",
+            body: JSON.stringify({
+              email,
+              name,
+              role,
+              supabase_user_id: data.user.id
+            })
+          })
+        } catch (syncError) {
+          console.error("Failed to sync user with backend Postgres database:", syncError)
+        }
+      }
 
       // If your project allows immediate sessions, route directly
       if (data?.session && data?.user) {

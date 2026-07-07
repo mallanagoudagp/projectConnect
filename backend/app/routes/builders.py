@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.services.db import get_db
 from app.models.builders import Builder, Service
+from app.services.auth_dependency import get_current_user, require_role
 from typing import List
 from pydantic import BaseModel
 import json
@@ -43,7 +44,7 @@ def get_builders(db: Session = Depends(get_db)):
     return result
 
 @router.get("/pending")
-def get_pending_builders(db: Session = Depends(get_db)):
+def get_pending_builders(db: Session = Depends(get_db), _user: dict = Depends(require_role("admin"))):
     """Fetch all pending builders for admin view"""
     builders = db.query(Builder).filter(Builder.verification_status == "pending").all()
     
@@ -61,7 +62,7 @@ def get_pending_builders(db: Session = Depends(get_db)):
     return result
 
 @router.post("/onboard")
-def onboard_builder(req: OnboardRequest, db: Session = Depends(get_db)):
+def onboard_builder(req: OnboardRequest, db: Session = Depends(get_db), _user: dict = Depends(get_current_user)):
     """Builder submits onboarding profile"""
     # Check if builder already exists
     builder = db.query(Builder).filter(Builder.email == req.email).first()
@@ -98,7 +99,7 @@ def onboard_builder(req: OnboardRequest, db: Session = Depends(get_db)):
     return {"message": "Onboarding submitted successfully, pending verification."}
 
 @router.post("/{builder_id}/verify")
-def verify_builder(builder_id: int, db: Session = Depends(get_db)):
+def verify_builder(builder_id: int, db: Session = Depends(get_db), _user: dict = Depends(require_role("admin"))):
     """Admin verifies a builder"""
     builder = db.query(Builder).filter(Builder.id == builder_id).first()
     if not builder:

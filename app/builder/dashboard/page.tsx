@@ -1,26 +1,46 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AppShell } from "@/components/app-shell"
 import { RoleGuard } from "@/components/role-guard"
 import Link from "next/link"
+import { apiFetch } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 
 export default function BuilderDashboardPage() {
+  const router = useRouter()
+  const { user, role, loading: authLoading } = useAuth()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-
   const [analytics, setAnalytics] = useState<any>(null)
 
+  // Auth guard: redirect unauthenticated users to login;
+  // redirect wrong-role users to their correct dashboard
+  // (same mapping as app/api/auth/redirect/route.ts)
   useEffect(() => {
-    // For demo/testing, fetch the seeded builder (email=builder@demo.com)
-    fetch('http://localhost:8000/dashboards/builder?email=builder@demo.com')
+    if (authLoading) return
+    if (!user) {
+      router.replace("/auth/login")
+    } else if (role !== "builder") {
+      const dest =
+        role === "student" ? "/student/dashboard" : "/parent/dashboard"
+      router.replace(dest)
+    }
+  }, [authLoading, user, role, router])
+
+  // Fetch dashboard once we have the logged-in builder's email
+  useEffect(() => {
+    if (authLoading || !user?.email) return
+
+    apiFetch(`/dashboards/builder?email=${encodeURIComponent(user.email)}`)
       .then(res => res.json())
       .then(data => {
         setData(data)
         if (data.builder?.id) {
-          fetch(`http://localhost:8000/builders/${data.builder.id}/analytics`)
+          apiFetch(`/builders/${data.builder.id}/analytics`)
             .then(r => r.json())
             .then(a => setAnalytics(a))
             .catch(console.error)
@@ -31,7 +51,7 @@ export default function BuilderDashboardPage() {
         console.error(err)
         setLoading(false)
       })
-  }, [])
+  }, [authLoading, user])
 
   if (loading) {
     return (

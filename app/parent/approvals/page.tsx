@@ -1,64 +1,79 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { getSupabaseBrowser } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { apiFetch } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 
 export default function ApprovalsPage() {
+  const router = useRouter()
+  const { user, role, loading: authLoading } = useAuth()
   const [pending, setPending] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedProject, setSelectedProject] = useState<any | null>(null)
   const [isPaying, setIsPaying] = useState(false)
   const { toast } = useToast()
-  const router = useRouter()
 
-  const fetchDashboard = async () => {
-    try {
-      const supabase = getSupabaseBrowser()
-      const { data: { session } } = await supabase.auth.getSession()
-      const email = session?.user?.email || "parent@demo.com"
-      
-      const res = await fetch(`http://localhost:8000/dashboards/parent?email=${email}`)
-      if (res.ok) {
-        const data = await res.json()
-        setPending(data.pending_approvals || [])
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Auth guard: redirect unauthenticated users to login;
+  // redirect wrong-role users to their correct dashboard
+  // (same mapping as app/api/auth/redirect/route.ts)
   useEffect(() => {
-    fetchDashboard()
-  }, [])
+    if (authLoading) return
+    if (!user) {
+      router.replace("/auth/login")
+    } else if (role !== "parent") {
+      const dest =
+        role === "builder" ? "/builder/dashboard" : "/student/dashboard"
+      router.replace(dest)
+    }
+  }, [authLoading, user, role, router])
+
+  // Fetch pending approvals once we have the logged-in parent's email
+  useEffect(() => {
+    if (authLoading || !user?.email) return
+
+    apiFetch(`/dashboards/parent?email=${encodeURIComponent(user.email)}`)
+      .then(res => res.json())
+      .then(data => {
+        setPending(data.pending_approvals || [])
+        setLoading(false)
+      })
+      .catch(e => {
+        console.error(e)
+        setLoading(false)
+      })
+  }, [authLoading, user])
 
   const handlePayAndApprove = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedProject) return
     setIsPaying(true)
-    
+
     try {
-      const res = await fetch(`http://localhost:8000/escrow/${selectedProject.id}/fund`, {
+      const res = await apiFetch(`/escrow/${selectedProject.id}/fund`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payment_token: "tok_mock_visa" })
       })
-      
+
       if (res.ok) {
         toast({ title: "Payment Successful", description: "Project approved and funds held in escrow!" })
         setSelectedProject(null)
         // Refresh the pending list
-        fetchDashboard()
-        // Optional: Route them to the new workspace
+        if (user?.email) {
+          apiFetch(`/dashboards/parent?email=${encodeURIComponent(user.email)}`)
+            .then(r => r.json())
+            .then(data => setPending(data.pending_approvals || []))
+            .catch(console.error)
+        }
+        // Route them to the new workspace
         router.push(`/workspace/${selectedProject.id}`)
       } else {
         const err = await res.json()
@@ -84,7 +99,7 @@ export default function ApprovalsPage() {
             <CardTitle>Project Requests</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
-            {loading ? (
+            {authLoading || loading ? (
               <p>Loading...</p>
             ) : pending.length === 0 ? (
               <p className="text-sm text-muted-foreground">No pending requests at this time.</p>
@@ -98,7 +113,7 @@ export default function ApprovalsPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-bold text-lg">${p.price}</span>
-                    <Button onClick={() => setSelectedProject(p)}>Review & Pay</Button>
+                    <Button onClick={() => setSelectedProject(p)}>Review &amp; Pay</Button>
                   </div>
                 </div>
               ))
@@ -110,7 +125,7 @@ export default function ApprovalsPage() {
         <Dialog open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Fund Escrow & Approve</DialogTitle>
+              <DialogTitle>Fund Escrow &amp; Approve</DialogTitle>
               <DialogDescription>
                 You are approving <strong>{selectedProject?.service_name}</strong> for {selectedProject?.child_name}.
                 The total amount of <strong>${selectedProject?.price}</strong> will be held in Escrow and released to the Builder only when the project is 100% complete.

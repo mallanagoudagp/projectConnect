@@ -6,12 +6,19 @@ from app.models.parents import Parent
 from app.models.children import Child
 from app.models.builders import Builder, Service
 from app.models.project_requests import ProjectRequest, Approval
+from app.services.auth_dependency import get_current_user
 from typing import List, Dict, Any
 
 router = APIRouter(prefix="/dashboards", tags=["dashboards"])
 
 @router.get("/parent")
-def get_parent_dashboard(email: str, db: Session = Depends(get_db)):
+def get_parent_dashboard(email: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if current_user["email"] != email:
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: You can only access your own parent dashboard."
+        )
+
     parent = db.query(Parent).filter(Parent.email == email).first()
     if not parent:
         raise HTTPException(status_code=404, detail="Parent not found")
@@ -54,15 +61,45 @@ def get_parent_dashboard(email: str, db: Session = Depends(get_db)):
     }
 
 @router.get("/child")
-def get_child_dashboard(child_id: int, db: Session = Depends(get_db)):
-    child = db.query(Child).filter(Child.id == child_id).first()
+def get_child_dashboard(
+    email: str = None,
+    child_id: int = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not email and not child_id:
+        raise HTTPException(status_code=400, detail="Provide email or child_id")
+
+    if email:
+        child = db.query(Child).filter(Child.email == email).first()
+    else:
+        child = db.query(Child).filter(Child.id == child_id).first()
+
     if not child:
         raise HTTPException(status_code=404, detail="Child not found")
-        
+
+    # Authorization check:
+    # A student/child can only view their own dashboard.
+    # A parent can view the dashboard of any child belonging to their family.
+    authorized = False
+    if current_user["role"] in ("student", "child") or child.email == current_user["email"]:
+        if child.email == current_user["email"]:
+            authorized = True
+    elif current_user["role"] == "parent":
+        parent = db.query(Parent).filter(Parent.email == current_user["email"]).first()
+        if parent and parent.family_id == child.family_id:
+            authorized = True
+
+    if not authorized:
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: You are not authorized to view this student's dashboard."
+        )
+
     projects = db.query(ProjectRequest).options(
         joinedload(ProjectRequest.service).joinedload(Service.builder)
-    ).filter(ProjectRequest.child_id == child_id).all()
-    
+    ).filter(ProjectRequest.child_id == child.id).all()
+
     formatted_projects = []
     for p in projects:
         formatted_projects.append({
@@ -72,14 +109,27 @@ def get_child_dashboard(child_id: int, db: Session = Depends(get_db)):
             "status": p.status,
             "progress": p.progress
         })
-        
+
     return {
-        "child": {"id": child.id, "name": child.name},
-        "projects": formatted_projects
+        "child": {"id": child.id, "name": child.name, "email": child.email},
+        "projects": formatted_projects,
+        "notifications": [
+            {"id": 1, "message": "Keep up the great work on your project!", "createdAt": "1 hour ago"}
+        ]
     }
 
 @router.get("/builder")
-def get_builder_dashboard(email: str, db: Session = Depends(get_db)):
+def get_builder_dashboard(
+    email: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["email"] != email:
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: You can only access your own builder dashboard."
+        )
+
     builder = db.query(Builder).filter(Builder.email == email).first()
     if not builder:
         raise HTTPException(status_code=404, detail="Builder not found")

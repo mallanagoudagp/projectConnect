@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getSupabaseBrowser } from "@/lib/supabase/client"
+import { API_BASE_URL } from "@/lib/backend-url"
 
 export default function BuilderOnboardingPage() {
   const router = useRouter()
@@ -42,7 +43,7 @@ export default function BuilderOnboardingPage() {
       
       const email = session?.user?.email || "builder@demo.com"
       
-      const res = await fetch("http://localhost:8000/builders/onboard", {
+      const res = await fetch("${API_BASE_URL}/builders/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

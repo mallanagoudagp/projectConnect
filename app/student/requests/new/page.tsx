@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
+import { apiFetch } from "@/lib/api-client"
 
 export default function NewRequestPage() {
   const [files, setFiles] = useState<File[]>([])
@@ -28,45 +29,24 @@ export default function NewRequestPage() {
       setSubmitting(true)
       setOverallProgress(10)
 
-      // 1) Create subscription (Child -> API -> DB (demo))
-      const familyId = "demo-family"
-      const childId = "child_demo"
-      const serviceId = "science_fair"
-      const createRes = await fetch(`/api/children/${childId}/services/${serviceId}/request`, {
+      // Submit to real FastAPI backend
+      const res = await apiFetch("/project-requests", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ familyId, amount: Number(budget), title, description: desc }),
+        body: JSON.stringify({ title, description: desc, budget: Number(budget) }),
       })
-      if (!createRes.ok) throw new Error("Failed to create request")
-      const { subscription } = await createRes.json()
-      setOverallProgress(35)
 
-      // 2) Upload reference files (presign -> upload)
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i]
-        const presign = await fetch("/api/uploads/presign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mime: f.type || "application/octet-stream" }),
-        }).then((r) => r.json())
-
-        const fd = new FormData()
-        fd.append("file", f)
-        fd.append("builderId", "demo-builder") // demo metadata
-        fd.append("subscriptionId", subscription.id)
-
-        await fetch(presign.uploadUrl, { method: "POST", body: fd }).then((r) => r.json())
-        setOverallProgress(35 + Math.round(((i + 1) / Math.max(files.length, 1)) * 55))
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Submission failed" }))
+        throw new Error(err?.detail ?? "Submission failed")
       }
 
       setOverallProgress(100)
       toast({
-        title: "Request submitted",
-        description: files.length
-          ? `Your request was created and ${files.length} reference file(s) uploaded.`
-          : "Your request was created.",
+        title: "Request submitted!",
+        description: "Your parent will be notified and can approve it from their dashboard.",
       })
-      // reset
+
+      // reset form
       setTitle("")
       setDesc("")
       setBudget("")
@@ -79,6 +59,7 @@ export default function NewRequestPage() {
       setSubmitting(false)
     }
   }
+
 
   return (
     <AppShell role="student">

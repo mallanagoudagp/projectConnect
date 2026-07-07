@@ -9,8 +9,18 @@ client = TestClient(app)
 import pytest
 from app.models.subscriptions import Subscription
 
+from app.services.auth_dependency import get_current_user
+
+def mock_get_current_user():
+    return {
+        "user_id": "mock-test-id",
+        "email": "john@example.com",
+        "role": "admin"
+    }
+
 @pytest.fixture(autouse=True)
 def setup_payment_prereqs():
+    app.dependency_overrides[get_current_user] = mock_get_current_user
     db = SessionLocal()
     if not db.query(Subscription).filter_by(id=1).first():
         sub = Subscription(id=1, parent_id=1, status='active', payment_status='paid')
