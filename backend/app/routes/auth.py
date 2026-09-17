@@ -134,3 +134,18 @@ async def logout():
     Logout endpoint (client should remove token)
     """
     return {"message": "Logout successful"}
+
+
+@router.get("/role")
+def get_role_by_email(email: str, db: Session = Depends(get_db)):
+    """
+    GET /auth/role?email=  — detect user role from DB tables.
+    Used as a fallback when Supabase user_metadata.role is missing.
+    """
+    if db.query(Parent).filter(Parent.email == email).first():
+        return {"role": "parent", "email": email}
+    if db.query(Child).filter(Child.email == email).first():
+        return {"role": "student", "email": email}
+    if db.query(Builder).filter(Builder.email == email).first():
+        return {"role": "builder", "email": email}
+    raise HTTPException(status_code=404, detail="No user found with that email.")

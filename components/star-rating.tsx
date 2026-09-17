@@ -1,44 +1,47 @@
 "use client"
 
-import * as React from "react"
 import { Star } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState } from "react"
 
 export function StarRating({
   value,
   onChange,
   readOnly = false,
-  size = 18,
+  size = "md",
 }: {
   value: number
   onChange?: (v: number) => void
   readOnly?: boolean
-  size?: number
+  size?: "sm" | "md" | "lg"
 }) {
-  const [hover, setHover] = React.useState<number | null>(null)
-  const stars = [1, 2, 3, 4, 5]
+  const [hovered, setHovered] = useState(0)
+
+  const sizeClass = size === "sm" ? "w-3.5 h-3.5" : size === "lg" ? "w-7 h-7" : "w-5 h-5"
+
   return (
-    <div className="flex items-center gap-1" role="img" aria-label={`Rating: ${value} out of 5`}>
-      {stars.map((s) => {
-        const active = (hover ?? value) >= s
-        return (
-          <button
-            key={s}
-            type="button"
-            disabled={readOnly}
-            onMouseEnter={() => !readOnly && setHover(s)}
-            onMouseLeave={() => !readOnly && setHover(null)}
-            onClick={() => onChange && onChange(s)}
-            className={cn("disabled:cursor-default")}
-            aria-label={`Rate ${s} star${s > 1 ? "s" : ""}`}
-          >
-            <Star
-              style={{ width: size, height: size }}
-              className={cn(active ? "fill-primary text-primary" : "text-muted-foreground")}
-            />
-          </button>
-        )
-      })}
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <button
+          key={i}
+          type="button"
+          disabled={readOnly}
+          onClick={() => !readOnly && onChange?.(i)}
+          onMouseEnter={() => !readOnly && setHovered(i)}
+          onMouseLeave={() => setHovered(0)}
+          className={readOnly ? "cursor-default" : "cursor-pointer transition-transform hover:scale-110"}
+          aria-label={`${i} star`}
+        >
+          <Star
+            className={[
+              sizeClass,
+              "transition-colors duration-100",
+              i <= (hovered || value)
+                ? "text-amber-400 fill-amber-400"
+                : "text-muted-foreground",
+            ].join(" ")}
+          />
+        </button>
+      ))}
     </div>
   )
 }

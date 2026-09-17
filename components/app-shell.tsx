@@ -1,39 +1,43 @@
 "use client"
 
 import type React from "react"
-
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { Menu } from "lucide-react"
+import { Menu, Bell, LogOut, ChevronRight, Home, Users, Plus, Upload, Star, Settings, CreditCard, Globe } from "lucide-react"
 import { getSupabaseBrowser } from "@/lib/supabase/client"
+import { useState } from "react"
 
 const parentNav = [
-  { href: "/parent/dashboard", label: "Dashboard" },
-  { href: "/builders", label: "Builders" },
-  { href: "/notifications", label: "Notifications" },
-  { href: "/reviews", label: "Reviews" },
-  { href: "/settings", label: "Settings" },
+  { href: "/parent/dashboard", label: "Dashboard", icon: Home },
+  { href: "/builders", label: "Builders", icon: Users },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/reviews", label: "Reviews", icon: Star },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 const studentNav = [
-  { href: "/student/dashboard", label: "Dashboard" },
-  { href: "/builders", label: "Builders" },
-  { href: "/student/requests/new", label: "Request" },
-  { href: "/notifications", label: "Notifications" },
-  { href: "/reviews", label: "Reviews" },
-  { href: "/settings", label: "Settings" },
+  { href: "/student/dashboard", label: "Dashboard", icon: Home },
+  { href: "/builders", label: "Builders", icon: Users },
+  { href: "/student/requests/new", label: "Request", icon: Plus },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 const builderNav = [
-  { href: "/builder/dashboard", label: "Dashboard" },
-  { href: "/builder/uploads", label: "Uploads" },
-  { href: "/reviews", label: "Reviews" },
-  { href: "/settings", label: "Settings" },
+  { href: "/builder/dashboard", label: "Dashboard", icon: Home },
+  { href: "/builder/uploads", label: "Uploads", icon: Upload },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/reviews", label: "Reviews", icon: Star },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
+
+const roleConfig = {
+  parent:  { label: "Parent",  color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", dot: "bg-blue-500" },
+  student: { label: "Student", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", dot: "bg-emerald-500" },
+  builder: { label: "Builder", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300", dot: "bg-orange-500" },
+}
 
 const nav = (role: "parent" | "student" | "builder" | undefined) => {
   if (role === "builder") return builderNav
@@ -52,6 +56,8 @@ export function AppShell({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   async function handleSignOut() {
     try {
       const supabase = getSupabaseBrowser()
@@ -59,119 +65,177 @@ export function AppShell({
       router.push("/")
     } catch {}
   }
+
+  const navItems = nav(role)
+  const rc = role ? roleConfig[role] : null
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b bg-background/75 supports-[backdrop-filter]:bg-background/60 backdrop-blur transition-colors">
-        <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="font-semibold text-primary hover:opacity-90 transition-opacity">
-            BuildTrack
+      {/* ── HEADER ── */}
+      <header className="sticky top-0 z-40 border-b border-border/60 bt-glass transition-all duration-300">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+              <span className="text-white font-bold text-sm">BT</span>
+            </div>
+            <span className="font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
+              Build<span className="text-primary">Track</span>
+            </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-1">
-            {nav(role).map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "px-3 py-2 rounded-md text-sm transition-colors",
-                  "text-foreground/80 hover:text-foreground hover:bg-muted/60",
-                  pathname.startsWith(item.href) && "bg-muted text-foreground font-medium",
-                )}
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const active = pathname === item.href || pathname.startsWith(item.href + "/")
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Right side */}
+          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            {rc && (
+              <span className={cn("flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full", rc.color)}>
+                <span className={cn("w-1.5 h-1.5 rounded-full", rc.dot)} />
+                {rc.label}
+              </span>
+            )}
+            {showAuthActions && role && (
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors"
+                aria-label="Sign out"
               >
-                {item.label}
-              </Link>
-            ))}
-            {/* Hide auth actions in exploration mode.
-                When showAuthActions is true, render login/sign out as before. */}
-            {showAuthActions ? (
-              role ? (
-                <>
-                  <span className="text-xs text-muted-foreground px-2 py-1 rounded-md bg-muted/60">
-                    {`Role: ${role}`}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSignOut}
-                    aria-label="Sign out"
-                    className="ml-2 bg-transparent hover:bg-muted/60"
-                  >
-                    Sign out
-                  </Button>
-                </>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/auth/login"
-                    className="px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors"
-                  >
-                    Login
-                  </Link>
-                  <Button asChild size="sm" className="hover:opacity-90 transition-opacity">
-                    <Link href="/auth/signup" aria-label="Sign up">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden lg:inline">Sign out</span>
+              </button>
+            )}
+            {showAuthActions && !role && (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/auth/login"
+                  className="text-sm text-muted-foreground hover:text-foreground px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile hamburger */}
+          <div className="md:hidden">
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <button
+                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-border hover:bg-muted/60 transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] p-0 bg-background border-border">
+                {/* Mobile sheet header */}
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">BT</span>
+                    </div>
+                    <span className="font-bold text-lg tracking-tight">
+                      Build<span className="text-primary">Track</span>
+                    </span>
+                  </div>
+                  {rc && (
+                    <span className={cn("mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full", rc.color)}>
+                      <span className={cn("w-1.5 h-1.5 rounded-full", rc.dot)} />
+                      {rc.label}
+                    </span>
+                  )}
+                </div>
+
+                {/* Mobile nav items */}
+                <div className="p-3 space-y-1">
+                  {navItems.map((item) => {
+                    const Icon = item.icon
+                    const active = pathname === item.href || pathname.startsWith(item.href + "/")
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        )}
+                      >
+                        <Icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="flex-1">{item.label}</span>
+                        {active && <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                {/* Mobile sign out */}
+                {showAuthActions && role && (
+                  <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border">
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+                {showAuthActions && !role && (
+                  <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border space-y-2">
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center w-full px-4 py-2.5 rounded-lg text-sm border border-border hover:bg-muted/60 transition-colors"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/auth/signup"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center w-full px-4 py-2.5 rounded-lg text-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                    >
                       Sign up
                     </Link>
-                  </Button>
-                </div>
-              )
-            ) : null}
-          </nav>
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Open menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right">
-                <div className="mt-6 grid gap-2">
-                  {nav(role).map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "px-2 py-2 rounded-md transition-colors",
-                        "text-foreground/80 hover:text-foreground hover:bg-muted/60",
-                        pathname.startsWith(item.href) && "bg-muted text-foreground font-medium",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                  <Separator className="my-2" />
-                  {showAuthActions ? (
-                    role ? (
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">{`Role: ${role}`}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleSignOut}
-                          className="hover:bg-muted/60 bg-transparent"
-                        >
-                          Sign out
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-2">
-                        <Link
-                          href="/auth/login"
-                          className="px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors"
-                        >
-                          Login
-                        </Link>
-                        <Button asChild size="sm" className="hover:opacity-90 transition-opacity">
-                          <Link href="/auth/signup">Sign up</Link>
-                        </Button>
-                      </div>
-                    )
-                  ) : null}
-                </div>
+                  </div>
+                )}
               </SheetContent>
             </Sheet>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+
+      {/* ── MAIN CONTENT ── */}
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-8">{children}</main>
     </div>
   )
 }

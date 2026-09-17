@@ -8,15 +8,21 @@ class ProjectRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     child_id = Column(Integer, ForeignKey('children.id'))
     service_id = Column(Integer, ForeignKey('services.id'), nullable=True)
+    # Direct builder assignment (null = global marketplace)
+    builder_id = Column(Integer, ForeignKey('builders.id'), nullable=True)
     title = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     budget = Column(Float, nullable=True)
-    status = Column(String, default='Pending') # Pending, Approved, In Progress, Completed
+    final_price = Column(Float, nullable=True)   # Set by builder when they quote
+    # Status machine:
+    # Pending Parent Approval → Pending Builder Acceptance → Pending Final Parent Approval
+    # → In Progress → Pending Parent Completion Review → Completed | Declined
+    status = Column(String, default='Pending Parent Approval')
     progress = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     child = relationship("Child")
-    service = relationship("Service")
+    service = relationship("Service", foreign_keys=[service_id])
 
 class Approval(Base):
     __tablename__ = 'approvals'

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.services.db import Base
@@ -19,8 +19,11 @@ class Service(Base):
     __tablename__ = 'services'
     id = Column(Integer, primary_key=True, index=True)
     builder_id = Column(Integer, ForeignKey('builders.id'))
-    type = Column(String) # Guided Learning, Hybrid Learning, Model Delivery
+    title = Column(String, nullable=True)  # user-facing name e.g. "Solar System Model"
+    type = Column(String)  # Guided Learning, Hybrid Learning, Model Delivery
+    description = Column(Text, nullable=True)
     price = Column(Float)
     category = Column(String)
 
     builder = relationship("Builder")
+
