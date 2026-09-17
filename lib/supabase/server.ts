@@ -23,7 +23,6 @@ export async function getSupabaseServer() {
   const key = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!url || !key || url === 'https://your-project-ref.supabase.co' || key === 'your-anon-key-here') {
-    console.warn('Supabase not configured, using mock server client for development')
     return createMockServerClient()
   }
 

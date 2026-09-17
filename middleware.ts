@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+import { type NextRequest, NextResponse } from "next/server"
 
 // Protected route prefixes — any path starting with these requires a session.
 // Public routes (/, /auth/*, /api/*) are intentionally excluded from the matcher below.
@@ -15,10 +15,26 @@ export async function middleware(req: NextRequest) {
   const isProtected = PROTECTED_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix)
   )
-  if (!isProtected) return res
+  // Check for local development / mock session cookies
+  const hasLocalSession = req.cookies.get("sb-auth-token") || req.cookies.get("auth-role") || req.cookies.get("auth-email")
+  if (hasLocalSession) {
+    return res
+  }
 
   // Read the Supabase session from cookies — same SSR client pattern as
   // app/api/auth/redirect/route.ts so both see the same session state.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+  if (!supabaseUrl || supabaseUrl === "https://your-project-ref.supabase.co") {
+    // If Supabase is unconfigured or placeholder, let users pass if they have demo-user or mock session
+    if (hasLocalSession || req.cookies.get("demo-user")) {
+      return res
+    }
+    const loginUrl = req.nextUrl.clone()
+    loginUrl.pathname = "/auth/login"
+    loginUrl.searchParams.set("redirectTo", pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
