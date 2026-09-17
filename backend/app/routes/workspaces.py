@@ -41,6 +41,11 @@ def _get_project_or_404(db: Session, project_id: int) -> ProjectRequest:
     return project
 
 
+def _ensure_not_rejected(project: ProjectRequest):
+    if project.status in ("Declined", "Rejected", "Rejected by Builder"):
+        raise HTTPException(status_code=409, detail="Rejected projects are read-only. Create a new request to try again.")
+
+
 # ─── Pydantic bodies ─────────────────────────────────────────────────────────
 
 class ProposeSessionRequest(BaseModel):
@@ -188,6 +193,8 @@ def approve_project(
 
     if builder_email:
         _notify(db, builder_email, f"New project request: '{project.title}' is waiting for your review.", "request")
+    if child:
+        _notify(db, child.email, f"Your parent approved '{project.title}'. It is now waiting for builder review.", "approval", parent.family_id)
     # Global marketplace: no specific builder to notify — all builders will see it
 
     db.commit()
@@ -230,6 +237,7 @@ def reject_project(
         parent = db.query(Parent).filter(Parent.family_id == child.family_id).first()
         if parent:
             _notify(db, parent.email, f"Builder declined your request: '{project.title}'.", "rejection")
+        _notify(db, child.email, f"The builder declined your request: '{project.title}'.", "rejection", child.family_id)
 
     db.commit()
     return {"message": "Request declined.", "project_id": project_id}
@@ -284,6 +292,7 @@ def builder_accept(
                 "quote",
                 family_id=parent.family_id,
             )
+            _notify(db, child.email, f"A builder submitted a quote for '{project.title}'. Your parent is reviewing it.", "quote", child.family_id)
 
     db.commit()
     return {
@@ -328,6 +337,7 @@ def parent_confirm(
 
     if builder_email:
         _notify(db, builder_email, f"Parent confirmed your quote for '{project.title}'. Project is now In Progress!", "confirmed")
+    _notify(db, child.email, f"Your project '{project.title}' is now in progress.", "confirmed", child.family_id)
 
     db.commit()
     return {"message": "Quote confirmed. Project is now In Progress.", "project_id": project_id}
@@ -345,6 +355,7 @@ def update_progress(
 ):
     """Builder updates the project progress %."""
     project = _get_project_or_404(db, project_id)
+    _ensure_not_rejected(project)
 
     builder = db.query(Builder).filter(Builder.email == current_user["email"]).first()
     if not builder:
@@ -376,6 +387,7 @@ def update_progress(
                     "completion",
                     family_id=parent.family_id,
                 )
+            _notify(db, child.email, f"Your project '{project.title}' is ready for your parent to review.", "completion", child.family_id)
 
     db.commit()
     return {"message": f"Progress updated to {req.progress}%", "status": project.status}
@@ -416,6 +428,7 @@ def verify_completion(
 
     if builder_email:
         _notify(db, builder_email, f"Payment released! Parent verified completion of '{project.title}'.", "payment")
+    _notify(db, child.email, f"Your project '{project.title}' was completed by your parent.", "completed", child.family_id)
 
     db.commit()
     return {"message": "Project verified as completed. Payment released to builder.", "project_id": project_id}
@@ -469,6 +482,7 @@ def propose_session(
 ):
     """Builder proposes a session."""
     project = _get_project_or_404(db, project_id)
+    _ensure_not_rejected(project)
     builder = db.query(Builder).filter(Builder.email == current_user["email"]).first()
     if not builder:
         raise HTTPException(status_code=403, detail="Only builders can propose sessions.")
@@ -503,6 +517,7 @@ def approve_session(
 ):
     """Parent/Student approves a proposed session."""
     project = _get_project_or_404(db, project_id)
+    _ensure_not_rejected(project)
 
     authorized = False
     if current_user["role"] == "parent":
@@ -543,6 +558,7 @@ def attach_file(
     project = db.query(ProjectRequest).filter(ProjectRequest.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    _ensure_not_rejected(project)
 
     attachment = FileAttachment(
         project_request_id=project_id,

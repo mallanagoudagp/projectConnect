@@ -14,6 +14,11 @@ from datetime import datetime
 
 router = APIRouter(prefix="/escrow", tags=["escrow"])
 
+
+def _ensure_not_rejected(project: ProjectRequest):
+    if project.status in ("Declined", "Rejected", "Rejected by Builder"):
+        raise HTTPException(status_code=409, detail="Rejected projects are read-only. Create a new request to try again.")
+
 @router.get("/refund-requests")
 def list_refund_requests(db: Session = Depends(get_db), current_user: dict = Depends(require_role("admin"))):
     """
@@ -48,6 +53,7 @@ def fund_project(project_id: int, req: FundRequest, db: Session = Depends(get_db
     project = db.query(ProjectRequest).options(joinedload(ProjectRequest.service)).filter(ProjectRequest.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project Request not found")
+    _ensure_not_rejected(project)
         
     if not project.service:
         raise HTTPException(status_code=400, detail="Project Request has no associated service price")
@@ -97,6 +103,7 @@ def release_funds(project_id: int, db: Session = Depends(get_db), current_user: 
     project = db.query(ProjectRequest).filter(ProjectRequest.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    _ensure_not_rejected(project)
 
     # Authorization / Ownership check:
     # Only the parent of the child associated with the project request or an admin can release funds.
@@ -153,6 +160,7 @@ def refund_escrow(project_id: int, db: Session = Depends(get_db), current_user: 
     project = db.query(ProjectRequest).filter(ProjectRequest.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    _ensure_not_rejected(project)
 
     # Authorization / Ownership check:
     # Only the parent of the child associated with the project can request a refund.

@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import {
   CheckCircle2, Clock, AlertCircle, XCircle, Loader2, Plus, Trash2,
-  ExternalLink, TrendingUp, Users, Bell, ChevronDown, ChevronUp, Check
+  ExternalLink, TrendingUp, Users, ChevronDown, ChevronUp, Check
 } from "lucide-react"
 
 /* ── STATUS HELPERS ── */
@@ -29,6 +29,12 @@ function statusToTimelineStage(status: string) {
   if (status === "In Progress") return 2
   if (status === "Pending Parent Completion Review" || status === "Completed") return 3
   return 0
+}
+
+function isRejectedStatus(status: unknown) {
+  return ["declined", "rejected", "rejected by builder"].includes(
+    String(status ?? "").trim().toLowerCase()
+  )
 }
 
 /* ── TIMELINE ── */
@@ -290,7 +296,8 @@ export default function ParentDashboard() {
   }
 
   const projects = data?.projects ?? []
-  const notifications = data?.notifications ?? []
+  const rejectedProjects = projects.filter((p: any) => isRejectedStatus(p.status))
+  const visibleProjects = projects.filter((p: any) => !isRejectedStatus(p.status))
   const children = data?.children ?? []
 
   // Stats
@@ -371,9 +378,9 @@ export default function ParentDashboard() {
         {/* ── PROJECTS GRID ── */}
         <div>
           <h2 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wider">
-            Projects ({projects.length})
+            Projects ({visibleProjects.length})
           </h2>
-          {projects.length === 0 ? (
+          {visibleProjects.length === 0 ? (
             <div className="bg-card border border-border rounded-2xl p-12 text-center">
               <div className="text-4xl mb-3">📋</div>
               <p className="font-medium text-sm">No projects yet</p>
@@ -385,7 +392,7 @@ export default function ParentDashboard() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {projects.map((p: any) => (
+              {visibleProjects.map((p: any) => (
                 <ProjectCard
                   key={p.id}
                   project={p}
@@ -399,28 +406,29 @@ export default function ParentDashboard() {
           )}
         </div>
 
-        {/* ── NOTIFICATIONS ── */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-            <Bell className="w-4 h-4 text-muted-foreground" />
-            <h2 className="font-semibold text-sm">Recent Notifications</h2>
+        {rejectedProjects.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                Rejected Requests ({rejectedProjects.length})
+              </h2>
+              <span className="text-xs text-muted-foreground">Kept for history and retry</span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {rejectedProjects.map((p: any) => (
+                <ProjectCard
+                  key={p.id}
+                  project={p}
+                  onApprove={handleApprove}
+                  onConfirm={handleConfirm}
+                  onVerify={() => router.push(`/workspace/${p.id}`)}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
           </div>
-          <div className="divide-y divide-border">
-            {notifications.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-muted-foreground text-center">No notifications yet.</p>
-            ) : (
-              notifications.slice(0, 5).map((n: any) => (
-                <div key={n.id} className="px-4 py-3 flex items-start justify-between gap-4 hover:bg-muted/30 transition-colors">
-                  <div className="flex items-start gap-2">
-                    {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                    <span className={`text-sm ${n.read ? "text-muted-foreground" : "font-medium"}`}>{n.message}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{n.createdAt}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        )}
+
       </div>
     </AppShell>
   )

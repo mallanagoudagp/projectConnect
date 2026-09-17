@@ -293,6 +293,7 @@ export default function WorkspacePage() {
   const sc = STATUS_CONFIG[data.status] ?? STATUS_CONFIG["Declined"]
   const shellRole = role === "builder" ? "builder" : role === "student" ? "student" : "parent"
   const escrow = data.escrow
+  const isRejected = ["Declined", "Rejected", "Rejected by Builder"].includes(data.status)
 
   return (
     <AppShell role={shellRole} showAuthActions>
@@ -312,6 +313,9 @@ export default function WorkspacePage() {
                 {" · "}
                 Builder: <span className="font-medium text-foreground">{data.builder?.name}</span>
               </p>
+              {isRejected && (
+                <p className="mt-2 text-xs font-medium text-red-600">This rejected project is read-only. Create a new request to try again.</p>
+              )}
             </div>
 
             {/* Escrow badge */}
@@ -369,7 +373,7 @@ export default function WorkspacePage() {
               </div>
 
               {/* Builder progress updater */}
-              {role === "builder" && (
+              {role === "builder" && !isRejected && (
                 <div className="mt-4 pt-4 border-t border-border">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Update Progress</label>
                   <div className="flex items-center gap-3">
@@ -394,7 +398,7 @@ export default function WorkspacePage() {
             </div>
 
             {/* Propose session (builder only) */}
-            {role === "builder" && (
+            {role === "builder" && !isRejected && (
               <div className="bg-card border border-border rounded-2xl p-5">
                 <h2 className="font-semibold text-sm mb-1">Propose a Session</h2>
                 <p className="text-xs text-muted-foreground mb-4">Schedule a video call with the student.</p>
@@ -471,7 +475,7 @@ export default function WorkspacePage() {
                         </a>
                       )}
 
-                      {(role === "parent" || role === "student") && s.status === "proposed" && (
+                      {!isRejected && (role === "parent" || role === "student") && s.status === "proposed" && (
                         <div className="mt-3 pt-3 border-t border-border">
                           <p className="text-xs text-muted-foreground mb-2">Builder proposed this session. Approve to schedule?</p>
                           <button
@@ -500,13 +504,13 @@ export default function WorkspacePage() {
                 <p className="text-xs text-muted-foreground">Photos, blueprints, and files</p>
               </div>
             </div>
-            <label htmlFor="file-upload" className="cursor-pointer">
+            {!isRejected && <label htmlFor="file-upload" className="cursor-pointer">
               <span className={`flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all ${isUploading ? "opacity-60 cursor-wait" : ""}`}>
                 {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {isUploading ? "Uploading…" : "Upload File"}
               </span>
               <input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-            </label>
+            </label>}
           </div>
 
           <div className="p-4">
@@ -547,7 +551,7 @@ export default function WorkspacePage() {
         {/* ── PARENT ACTION BANNERS ── */}
 
         {/* Refund under review */}
-        {role === "parent" && data.progress < 100 && data.escrow?.status === "refund_requested" && (
+        {role === "parent" && !isRejected && data.progress < 100 && data.escrow?.status === "refund_requested" && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 flex items-start gap-3">
             <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
@@ -560,7 +564,7 @@ export default function WorkspacePage() {
         )}
 
         {/* Request refund */}
-        {role === "parent" && data.escrow?.status === "held" && data.progress < 100 && (
+        {role === "parent" && !isRejected && data.escrow?.status === "held" && data.progress < 100 && (
           <div className="bg-card border border-destructive/40 rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
@@ -583,7 +587,7 @@ export default function WorkspacePage() {
         )}
 
         {/* Release escrow */}
-        {role === "parent" && data.progress === 100 && data.escrow?.status === "held" && (
+        {role === "parent" && !isRejected && data.progress === 100 && data.escrow?.status === "held" && (
           <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -606,7 +610,7 @@ export default function WorkspacePage() {
         )}
 
         {/* Leave a review */}
-        {role === "parent" && data.status === "Pending Parent Completion Review" && (
+        {role === "parent" && !isRejected && data.status === "Pending Parent Completion Review" && (
           <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -626,7 +630,7 @@ export default function WorkspacePage() {
           </div>
         )}
 
-        {role === "parent" && data.status === "Completed" && (
+        {role === "parent" && !isRejected && data.status === "Completed" && (
           <div className="bg-card border border-border rounded-2xl p-5">
             <h2 className="font-semibold text-sm mb-1">Leave a Review</h2>
             <p className="text-xs text-muted-foreground mb-4">How was your experience with {data.builder?.name}?</p>

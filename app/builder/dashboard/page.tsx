@@ -150,6 +150,8 @@ export default function BuilderDashboardPage() {
   }
 
   const projects = data?.projects || []
+  const rejectedProjects = projects.filter((p: any) => ["Declined", "Rejected", "Rejected by Builder"].includes(p.status))
+  const activeProjects = projects.filter((p: any) => !["Declined", "Rejected", "Rejected by Builder"].includes(p.status))
   const builder = data?.builder || {}
   const pendingRequests = data?.pending_requests || []
   const globalRequests = data?.global_requests || []
@@ -178,7 +180,7 @@ export default function BuilderDashboardPage() {
                 <StarDisplay rating={builder.rating ?? 0} />
                 <span className="text-sm text-muted-foreground">{builder.rating ?? "—"} / 5.0</span>
                 <span className="text-muted-foreground">·</span>
-                <span className="text-sm text-muted-foreground">{projects.length} active student{projects.length !== 1 ? "s" : ""}</span>
+                <span className="text-sm text-muted-foreground">{activeProjects.length} active student{activeProjects.length !== 1 ? "s" : ""}</span>
               </div>
               {builder.blurb && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{builder.blurb}</p>}
             </div>
@@ -346,17 +348,17 @@ export default function BuilderDashboardPage() {
             <div className="px-4 py-3 border-b border-border flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
               <h2 className="font-semibold text-sm">Assigned Projects</h2>
-              <span className="ml-auto text-xs text-muted-foreground">{projects.length} total</span>
+              <span className="ml-auto text-xs text-muted-foreground">{activeProjects.length} total</span>
             </div>
             <div className="divide-y divide-border">
-              {projects.length === 0 ? (
+              {activeProjects.length === 0 ? (
                 <div className="py-12 text-center px-4">
                   <div className="text-3xl mb-2">🔨</div>
                   <p className="text-sm font-medium">No assigned projects yet</p>
                   <p className="text-xs text-muted-foreground mt-1">Accept requests to start building.</p>
                 </div>
               ) : (
-                projects.map((p: any) => (
+                activeProjects.map((p: any) => (
                   <div key={p.id} className="px-4 py-3 flex items-center gap-3 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">{p.title || p.service_name}</div>
@@ -386,6 +388,30 @@ export default function BuilderDashboardPage() {
               )}
             </div>
           </div>
+
+          {rejectedProjects.length > 0 && (
+            <div className="bg-card border border-red-200 dark:border-red-900/60 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-red-100 dark:border-red-900/50 flex items-center gap-2">
+                <X className="w-4 h-4 text-red-600" />
+                <h2 className="font-semibold text-sm">Rejected Projects</h2>
+                <span className="ml-auto text-xs text-muted-foreground">{rejectedProjects.length} history</span>
+              </div>
+              <div className="divide-y divide-border">
+                {rejectedProjects.map((p: any) => (
+                  <div key={p.id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{p.title || p.service_name || "Untitled Project"}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Student: {p.child_name}</div>
+                    </div>
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full border bt-badge-declined">{p.status}</span>
+                    <Link href={`/workspace/${p.id}`} className="flex items-center gap-1 px-2.5 py-1.5 border border-border text-xs rounded-lg hover:bg-muted/60 transition-all font-medium">
+                      <ExternalLink className="w-3 h-3" /> History
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── RECENT REVIEWS ── */}
           {analytics?.recent_reviews?.length > 0 && (

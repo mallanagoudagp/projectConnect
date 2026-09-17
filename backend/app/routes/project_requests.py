@@ -73,6 +73,14 @@ def submit_project_request(
         )
         db.add(notif)
 
+    db.add(Notification(
+        user_email=child.email,
+        family_id=child.family_id,
+        type="request_submitted",
+        message=f"Your project request '{body.title}' was submitted and is waiting for parent approval.",
+        read=False,
+    ))
+
     db.commit()
     db.refresh(project)
 

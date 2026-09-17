@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from app.models.notifications import Notification
+from app.models.children import Child
+from app.models.project_requests import ProjectRequest
 from app.services.db import get_db
 from app.services.auth_dependency import get_current_user
 
@@ -33,6 +35,28 @@ def list_notifications(
         .limit(50)
         .all()
     )
+    # Older projects may predate student notification creation. Expose a
+    # current status notification for those projects until a new event occurs.
+    if current_user.get("role") in ("student", "child") and not notifs:
+        child = db.query(Child).filter(Child.email == email).first()
+        if child:
+            projects = (
+                db.query(ProjectRequest)
+                .filter(ProjectRequest.child_id == child.id)
+                .order_by(ProjectRequest.created_at.desc())
+                .limit(10)
+                .all()
+            )
+            return [
+                {
+                    "id": -project.id,
+                    "message": f"Your project '{project.title or 'Project'}' is currently {project.status}.",
+                    "type": "project_status",
+                    "read": True,
+                    "created_at": project.created_at,
+                }
+                for project in projects
+            ]
     return [
         {
             "id": n.id,

@@ -92,10 +92,15 @@ export default function StudentDashboard() {
     )
   }
 
-  const active = data?.projects || []
+  const allProjects = data?.projects || []
+  const completedProjects = allProjects.filter((r: any) => r.status === "Completed" || r.status === "Delivered")
+  const rejectedProjects = allProjects.filter((r: any) => ["Declined", "Rejected", "Rejected by Builder"].includes(r.status))
+  const active = allProjects.filter((r: any) =>
+    !["Completed", "Delivered", "Declined", "Rejected", "Rejected by Builder"].includes(r.status)
+  )
   const notifications = data?.notifications || []
   const inProgress = active.filter((r: any) => r.status === "In Progress" || r.status === "Approved").length
-  const completed = active.filter((r: any) => r.status === "Completed" || r.status === "Delivered").length
+  const completed = completedProjects.length
 
   // Get student first name
   const firstName = data?.child?.name?.split(" ")[0] || user?.user_metadata?.name?.split(" ")[0] || "there"
@@ -117,7 +122,7 @@ export default function StudentDashboard() {
           {/* ── STAT STRIP ── */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: "Total Requests", value: active.length, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20", icon: TrendingUp },
+              { label: "Total Requests", value: allProjects.length, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20", icon: TrendingUp },
               { label: "In Progress", value: inProgress, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20", icon: Clock },
               { label: "Completed", value: completed, color: "text-green-600", bg: "bg-green-50 dark:bg-green-900/20", icon: CheckCircle2 },
             ].map(s => {
@@ -181,7 +186,7 @@ export default function StudentDashboard() {
                   {active.length === 0 ? (
                     <div className="py-12 text-center px-4">
                       <div className="text-3xl mb-2">📂</div>
-                      <p className="text-sm font-medium">No requests yet</p>
+                      <p className="text-sm font-medium">No active requests</p>
                       <p className="text-xs text-muted-foreground mt-1">Create your first request to get started.</p>
                     </div>
                   ) : (
@@ -230,6 +235,77 @@ export default function StudentDashboard() {
               </div>
             </div>
           </div>
+
+          {/* ── COMPLETED PROJECTS ── */}
+          {completedProjects.length > 0 && (
+            <div className="mt-6 bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <h2 className="font-semibold text-sm">
+                  Completed Projects
+                  <span className="ml-2 bg-emerald-100 text-emerald-700 text-xs px-1.5 py-0.5 rounded-full">{completedProjects.length}</span>
+                </h2>
+              </div>
+              <div className="divide-y divide-border">
+                {completedProjects.map((r: any, i: number) => (
+                  <div key={r.id ?? i} className="px-4 py-3 flex items-center gap-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{r.service_name || r.title || "Untitled Project"}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {r.builder_name && r.builder_name !== "No builder assigned yet" ? `🔨 ${r.builder_name}` : "🌐 Global Marketplace"}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{r.final_price ?? r.budget ?? "No budget"}</span>
+                        {r.created_at && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(r.created_at).toLocaleDateString()}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full border bt-badge-completed">
+                        <CheckCircle2 className="w-3 h-3" /> Completed
+                      </span>
+                      <Link
+                        href={`/workspace/${r.id}`}
+                        className="flex items-center gap-1 px-2.5 py-1.5 border border-border text-xs rounded-lg hover:bg-muted/60 transition-all font-medium"
+                      >
+                        Open <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── REJECTED PROJECTS ── */}
+          {rejectedProjects.length > 0 && (
+            <div className="mt-6 bg-card border border-red-200 dark:border-red-900/60 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-red-100 dark:border-red-900/50 flex items-center justify-between">
+                <h2 className="font-semibold text-sm">
+                  Rejected Projects
+                  <span className="ml-2 bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-full">{rejectedProjects.length}</span>
+                </h2>
+                <span className="text-xs text-muted-foreground">Available for retry</span>
+              </div>
+              <div className="divide-y divide-border">
+                {rejectedProjects.map((r: any, i: number) => (
+                  <div key={r.id ?? i} className="px-4 py-3 flex items-center gap-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{r.service_name || r.title || "Untitled Project"}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {r.builder_name && r.builder_name !== "No builder assigned yet" ? `🔨 ${r.builder_name}` : "🌐 Global Marketplace"}
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bt-badge-declined">{r.status}</span>
+                    <Link
+                      href="/student/requests/new"
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-primary-foreground text-xs rounded-lg hover:bg-primary/90 transition-all font-medium"
+                    >
+                      Retry Request <Plus className="w-3 h-3" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── NOTIFICATIONS ── */}
           {notifications.length > 0 && (
