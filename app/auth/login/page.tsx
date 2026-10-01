@@ -1,12 +1,11 @@
 "use client"
 
-import Link from "next/link"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { apiFetch } from "@/lib/api-client"
-import { getSupabaseBrowser } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
+import { getSupabaseBrowser } from "@/lib/supabase/client"
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 type Role = "parent" | "student" | "builder"
 
@@ -67,7 +66,12 @@ export default function LoginPage() {
         : "/parent/dashboard"
       router.push(dest)
     } catch (e: any) {
-      toast({ title: "Sign-in failed", description: e.message, variant: "destructive" })
+      const message = e?.message === "Email not confirmed"
+        ? "Confirm your email from the Supabase verification message before signing in."
+        : e?.message === "Invalid login credentials"
+          ? "Email or password is incorrect. Check both values and try again."
+          : e?.message || "Unable to sign in. Please try again."
+      toast({ title: "Sign-in failed", description: message, variant: "destructive" })
     } finally {
       setLoading(false)
     }

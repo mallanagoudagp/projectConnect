@@ -1,12 +1,12 @@
 "use client"
 
-import Link from "next/link"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api-client"
 import { getSupabaseBrowser } from "@/lib/supabase/client"
-import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Loader2, Check } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 type Role = "parent" | "student" | "builder"
 
@@ -102,7 +102,7 @@ export default function SignupPage() {
         password,
         options: {
           data: { role, name },
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
+          emailRedirectTo: window.location.origin,
         },
       })
       if (error) throw error
@@ -118,14 +118,14 @@ export default function SignupPage() {
         }
       }
 
-      if (data?.user) {
+      if (data?.user && data.session) {
         toast({ title: "Account created!", description: `Welcome to BuildTrack as a ${role}.` })
         const dest = role === "builder" ? "/builder/dashboard" : role === "student" ? "/student/dashboard" : "/parent/dashboard"
         window.location.assign(dest)
         return
       }
 
-      toast({ title: "Check your email", description: "We sent you a confirmation link to verify your account." })
+      toast({ title: "Confirm your email", description: "Your account was created. Open the verification email before signing in." })
       router.replace(`/auth/login?email=${encodeURIComponent(email)}`)
     } catch (e: any) {
       toast({ title: "Sign-up failed", description: e.message, variant: "destructive" })
