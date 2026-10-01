@@ -1,14 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getSupabaseBrowser } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { getSupabaseBrowser } from "@/lib/supabase/client"
+import type { AuthChangeEvent } from "@supabase/supabase-js"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -21,7 +22,7 @@ export default function ResetPasswordPage() {
     // Check if access token exists in URL hash from Supabase password recovery email
     if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
       const supabase = getSupabaseBrowser()
-      supabase.auth.onAuthStateChange(async (event) => {
+      supabase.auth.onAuthStateChange(async (event: AuthChangeEvent) => {
         if (event === "PASSWORD_RECOVERY") {
           toast({ title: "Session verified", description: "Please enter your new password below." })
         }

@@ -98,6 +98,7 @@ export default function WorkspacePage() {
   const { id } = useParams()
   const { toast } = useToast()
   const { role } = useAuth()
+  const appRole = role === "student" || role === "builder" ? role : "parent"
 
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -267,7 +268,7 @@ export default function WorkspacePage() {
 
   if (loading) {
     return (
-      <AppShell role={role ?? "parent"}>
+      <AppShell role={appRole}>
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -280,7 +281,7 @@ export default function WorkspacePage() {
 
   if (!data) {
     return (
-      <AppShell role={role ?? "parent"}>
+      <AppShell role={appRole}>
         <div className="py-20 text-center">
           <div className="text-4xl mb-3">🔍</div>
           <p className="font-medium">Workspace not found</p>

@@ -5,7 +5,7 @@ import { type NextRequest, NextResponse } from "next/server"
 // Public routes (/, /auth/*, /api/*) are intentionally excluded from the matcher below.
 const PROTECTED_PREFIXES = ["/parent", "/student", "/builder", "/admin"]
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next({
     request: { headers: new Headers(req.headers) },
   })

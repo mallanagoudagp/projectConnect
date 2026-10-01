@@ -2,12 +2,6 @@ import path from 'node:path'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     unoptimized: true,
     localPatterns: [
@@ -22,7 +16,7 @@ const nextConfig = {
     return [
       {
         source: '/api/backend/:path*',
-        destination: 'http://127.0.0.1:8000/:path*',
+        destination: `${process.env.BACKEND_URL || 'http://127.0.0.1:8000'}/:path*`,
       },
     ]
   },

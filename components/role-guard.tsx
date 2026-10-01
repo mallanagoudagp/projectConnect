@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { getSupabaseBrowser } from '@/lib/supabase/client'
-import { User } from '@supabase/supabase-js'
+import { User, type AuthChangeEvent, type Session } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 interface RoleGuardProps {
   children: React.ReactNode
@@ -78,13 +78,13 @@ export function useCurrentUser() {
   useEffect(() => {
     const supabase = getSupabaseBrowser()
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       setUser(session?.user ?? null)
       setRole(session?.user?.user_metadata?.role ?? null)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         setUser(session?.user ?? null)
         setRole(session?.user?.user_metadata?.role ?? null)
       }

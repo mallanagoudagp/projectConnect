@@ -9,10 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import Image from "next/image"
-import { useEffect, useMemo, useState } from "react"
 import { apiFetch } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
+import Image from "next/image"
+import { useEffect, useMemo, useState } from "react"
 
 // Demo data removed, now fetching from API
 
@@ -466,7 +466,7 @@ function BuilderCard({
 
           {/* Star rating + numeric */}
           <div className="flex items-center gap-1.5">
-            <StarRating value={Math.round(b.rating)} readOnly size={14} />
+            <StarRating value={Math.round(b.rating)} readOnly size="sm" />
             <span
               style={{
                 fontSize: "0.8125rem",
@@ -735,7 +735,7 @@ function BuilderReviewsDialog({ builderId, builderName }: { builderId: number; b
                   <span style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--bt-ink)" }}>
                     {r.parent_name}
                   </span>
-                  <StarRating value={r.rating} readOnly size={14} />
+                  <StarRating value={r.rating} readOnly size="sm" />
                 </div>
                 <p style={{ fontSize: "0.875rem", color: "var(--bt-chalk)", fontStyle: "italic" }}>
                   "{r.comment}"

@@ -1,14 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
+import { EmptyState, StarEmptyIcon } from "@/components/empty-state"
 import { RoleGuard } from "@/components/role-guard"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { SkeletonCard } from "@/components/skeleton-card"
 import { StarRating } from "@/components/star-rating"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiFetch } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
-import { SkeletonCard } from "@/components/skeleton-card"
-import { EmptyState, StarEmptyIcon } from "@/components/empty-state"
+import { useEffect, useState } from "react"
 
 interface Review {
   id: number
@@ -47,8 +47,8 @@ export default function BuilderReviewsPage() {
           
           {loading ? (
             <div className="grid gap-4">
-              <SkeletonCard rows={3} />
-              <SkeletonCard rows={3} />
+              <SkeletonCard lines={3} />
+              <SkeletonCard lines={3} />
             </div>
           ) : reviews.length === 0 ? (
             <EmptyState

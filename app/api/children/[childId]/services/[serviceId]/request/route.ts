@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server"
+import { NextResponse } from "next/server";
 
-export async function POST(req: Request, { params }: { params: { childId: string; serviceId: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ childId: string; serviceId: string }> }) {
   try {
+    const { childId, serviceId } = await params
     const body = await req.json().catch(() => ({}))
     const amount = Number(body?.amount ?? 99)
     const familyId = String(body?.familyId ?? "")
@@ -14,8 +15,8 @@ export async function POST(req: Request, { params }: { params: { childId: string
         ...(body?.token ? { Authorization: `Bearer ${body.token}` } : {}),
       },
       body: JSON.stringify({
-        child_id: params.childId,
-        service_id: params.serviceId,
+        child_id: childId,
+        service_id: serviceId,
         family_id: familyId,
         amount,
       }),

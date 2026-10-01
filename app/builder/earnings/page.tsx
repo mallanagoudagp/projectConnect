@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
+import { EmptyState } from "@/components/empty-state"
 import { RoleGuard } from "@/components/role-guard"
+import { SkeletonCard } from "@/components/skeleton-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiFetch } from "@/lib/api-client"
-import { SkeletonCard } from "@/components/skeleton-card"
-import { EmptyState } from "@/components/empty-state"
-import { DollarSign, CheckCircle2, Clock, User, ArrowDownLeft } from "lucide-react"
+import { ArrowDownLeft, CheckCircle2, Clock, DollarSign, User } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface EarningsTransaction {
   id: number
@@ -69,8 +69,8 @@ export default function BuilderEarningsPage() {
 
           {loading ? (
             <div className="grid gap-4">
-              <SkeletonCard rows={2} />
-              <SkeletonCard rows={4} />
+              <SkeletonCard lines={2} />
+              <SkeletonCard lines={4} />
             </div>
           ) : (
             <>

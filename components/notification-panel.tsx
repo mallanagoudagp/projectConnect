@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { getSupabaseBrowser } from "@/lib/supabase/client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getSupabaseBrowser } from "@/lib/supabase/client"
+import { useEffect, useState } from "react"
 
 type Note = { text: string; time: string }
 
@@ -14,7 +14,7 @@ export function NotificationPanel() {
     const supabase = getSupabaseBrowser()
     const channel = supabase
       .channel("buildtrack:notifications")
-      .on("broadcast", { event: "new-notification" }, (payload) => {
+      .on("broadcast", { event: "new-notification" }, (payload: { payload: { text?: string } }) => {
         const text = (payload?.payload as any)?.text || "New update"
         setNotes((n) => [{ text, time: "now" }, ...n])
       })
