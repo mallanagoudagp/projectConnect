@@ -1,16 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
-import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
-import { useToast } from "@/hooks/use-toast"
 import {
-  CheckCircle2, Clock, AlertCircle, XCircle, Loader2, Plus, Trash2,
-  ExternalLink, TrendingUp, Users, ChevronDown, ChevronUp, Check
+    AlertCircle,
+    Check,
+    CheckCircle2,
+    ChevronUp,
+    Clock,
+    ExternalLink,
+    Loader2, Plus, Trash2,
+    TrendingUp,
+    XCircle
 } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 /* ── STATUS HELPERS ── */
 const STATUS_CONFIG: Record<string, { label: string; badgeClass: string; borderClass: string; dotClass: string; icon: React.ElementType }> = {
@@ -374,6 +381,34 @@ export default function ParentDashboard() {
             <p className="text-xs text-muted-foreground mt-2">The child must already have a student account before linking.</p>
           </div>
         )}
+
+        {/* ── LINKED CHILDREN ── */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="font-semibold text-sm">Linked Children</h2>
+              <p className="text-xs text-muted-foreground mt-1">Student accounts connected to your family.</p>
+            </div>
+            <span className="text-xs font-medium text-muted-foreground">{children.length}</span>
+          </div>
+          {children.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No child accounts linked yet.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {children.map((child: { id: number; name: string; email: string }) => (
+                <div key={child.id} className="flex items-center gap-3 rounded-xl border border-border/70 p-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
+                    {child.name?.charAt(0).toUpperCase() || "S"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{child.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{child.email}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* ── PROJECTS GRID ── */}
         <div>

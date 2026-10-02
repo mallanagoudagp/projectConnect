@@ -66,14 +66,16 @@ def link_child(
     current_user: dict = Depends(get_current_user),
 ):
     """Link a student account to a parent's family."""
-    if current_user["email"] != body.parent_email:
+    parent_email = body.parent_email.strip().lower()
+    child_email = body.child_email.strip().lower()
+    if (current_user["email"] or "").strip().lower() != parent_email:
         raise HTTPException(status_code=403, detail="Forbidden: You can only link children to your own account.")
 
-    parent = db.query(Parent).filter(Parent.email == body.parent_email).first()
+    parent = db.query(Parent).filter(Parent.email.ilike(parent_email)).first()
     if not parent:
         raise HTTPException(status_code=404, detail="Parent not found.")
 
-    child = db.query(Child).filter(Child.email == body.child_email).first()
+    child = db.query(Child).filter(Child.email.ilike(child_email)).first()
     if not child:
         raise HTTPException(
             status_code=404,
