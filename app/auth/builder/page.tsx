@@ -1,15 +1,17 @@
 "use client"
 
-import Link from "next/link"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
 import { getSupabaseBrowser } from "@/lib/supabase/client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 export default function SimpleBuilderLogin() {
-  const [email, setEmail] = useState("builder@demo.com")
-  const [password, setPassword] = useState("password")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
   const router = useRouter()
 
   async function handleLogin() {
@@ -22,12 +24,17 @@ export default function SimpleBuilderLogin() {
       })
       
       if (error) {
-        console.error('Login error:', error)
+        const message = error.message === "Invalid login credentials"
+          ? "The email or password is incorrect. Create a builder account first if you have not signed up yet."
+          : error.message === "Email not confirmed"
+            ? "Confirm your email from the Supabase verification message before signing in."
+            : error.message
+        toast({ title: "Builder sign-in failed", description: message, variant: "destructive" })
       } else {
         router.push("/builder/dashboard")
       }
-    } catch (error) {
-      console.error('Login failed:', error)
+    } catch (error: any) {
+      toast({ title: "Builder sign-in failed", description: error?.message || "Unable to sign in.", variant: "destructive" })
     } finally {
       setLoading(false)
     }

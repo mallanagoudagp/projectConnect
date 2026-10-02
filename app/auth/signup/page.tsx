@@ -6,7 +6,7 @@ import { getSupabaseBrowser } from "@/lib/supabase/client"
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 type Role = "parent" | "student" | "builder"
 
@@ -87,6 +87,13 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+
+  useEffect(() => {
+    const requestedRole = new URLSearchParams(window.location.search).get("role")
+    if (requestedRole === "student" || requestedRole === "builder") {
+      setRole(requestedRole)
+    }
+  }, [])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()

@@ -17,18 +17,21 @@ import os
 import base64
 import json
 import jwt
+import httpx
 from fastapi import Header, HTTPException, Depends
 from typing import Optional, Callable
 
 import os
 import jwt
 from jwt import PyJWKClient
+from jwt.exceptions import PyJWKClientError
 from fastapi import Header, HTTPException, Depends
 from typing import Optional, Callable
 
 # Load configuration from environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL", "")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
 
 # Initialize the JWK client globally if a Supabase URL is available.
 # This automatically fetches and caches the public keys from Supabase's JWKS endpoint.
@@ -38,6 +41,30 @@ if SUPABASE_URL:
     base_url = SUPABASE_URL.rstrip("/")
     jwks_url = f"{base_url}/auth/v1/.well-known/jwks.json"
     jwks_client = PyJWKClient(jwks_url)
+
+
+def verify_with_supabase_api(token: str) -> Optional[dict]:
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return None
+    try:
+        response = httpx.get(
+            f"{SUPABASE_URL.rstrip('/')}/auth/v1/user",
+            headers={
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": f"Bearer {token}",
+            },
+            timeout=5.0,
+        )
+        if response.is_success:
+            user = response.json()
+            return {
+                "user_id": user.get("id"),
+                "email": user.get("email"),
+                "role": (user.get("user_metadata") or {}).get("role", "authenticated"),
+            }
+    except httpx.HTTPError:
+        pass
+    return None
 
 
 def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
@@ -69,7 +96,14 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
 
     try:
         # Path A: Asymmetric verification using JWKS (required for ECC/ES256)
-        if jwks_client:
+        if SUPABASE_JWT_SECRET:
+            payload = jwt.decode(
+                token,
+                SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                audience="authenticated",
+            )
+        elif jwks_client:
             signing_key = jwks_client.get_signing_key_from_jwt(token)
             payload = jwt.decode(
                 token,
@@ -78,13 +112,6 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
                 audience="authenticated",
             )
         # Path B: Symmetric verification using static secret (for older HS256 setups)
-        elif SUPABASE_JWT_SECRET:
-            payload = jwt.decode(
-                token,
-                SUPABASE_JWT_SECRET,
-                algorithms=["HS256"],
-                audience="authenticated",
-            )
         else:
             raise HTTPException(
                 status_code=500,
@@ -92,7 +119,15 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
             )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
+    except PyJWKClientError:
+        user = verify_with_supabase_api(token)
+        if user:
+            return user
+        raise HTTPException(status_code=401, detail="Unable to verify Supabase session")
     except jwt.InvalidTokenError as e:
+        user = verify_with_supabase_api(token)
+        if user:
+            return user
         raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
 
     # Extract claims

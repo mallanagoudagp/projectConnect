@@ -1,19 +1,21 @@
 "use client"
 
-import Link from "next/link"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { getSupabaseBrowser } from "@/lib/supabase/client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { getSupabaseBrowser } from "@/lib/supabase/client"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 export default function SimpleStudentLogin() {
-  const [email, setEmail] = useState("student@demo.com")
-  const [password, setPassword] = useState("password")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
   const router = useRouter()
 
   async function handleLogin() {
@@ -26,12 +28,17 @@ export default function SimpleStudentLogin() {
       })
       
       if (error) {
-        console.error('Login error:', error)
+        const message = error.message === "Invalid login credentials"
+          ? "The email or password is incorrect. Create a student account first if you have not signed up yet."
+          : error.message === "Email not confirmed"
+            ? "Confirm your email from the Supabase verification message before signing in."
+            : error.message
+        toast({ title: "Student sign-in failed", description: message, variant: "destructive" })
       } else {
         router.push("/student/dashboard")
       }
-    } catch (error) {
-      console.error('Login failed:', error)
+    } catch (error: any) {
+      toast({ title: "Student sign-in failed", description: error?.message || "Unable to sign in.", variant: "destructive" })
     } finally {
       setLoading(false)
     }
